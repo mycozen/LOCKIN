@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi Watermark - Glassmorphism</title>
+    
+    <!-- Tailwind CSS for layout and utilities -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- JSZip Library for bundling images into a ZIP file -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        /* Base page styling with a vibrant gradient background */
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #4f46e5, #9333ea, #ec4899);
+            background-attachment: fixed;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: white;
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .glass-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .glass-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .glass-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            color: white;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .glass-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.35);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .glass-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .glass-btn-primary {
+            background: rgba(59, 130, 246, 0.4);
+            border: 1px solid rgba(96, 165, 250, 0.5);
+        }
+        
+        .glass-btn-primary:hover:not(:disabled) {
+            background: rgba(59, 130, 246, 0.6);
+        }
+
+        .glass-btn-success {
+            background: rgba(16, 185, 129, 0.4);
+            border: 1px solid rgba(52, 211, 153, 0.5);
+        }
+
+        .glass-btn-success:hover:not(:disabled) {
+            background: rgba(16, 185, 129, 0.6);
+        }
+
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3); 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5); 
+        }
+
+        /* Loader Animation */
+        .spinner {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 1s linear infinite; /* Safari */
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8 flex flex-col items-center min-h-screen">
+
+    <!-- Main Container -->
+    <div class="glass-panel w-full max-w-5xl p-6 md:p-10 flex flex-col gap-8">
+        
+        <!-- Header -->
+        <div class="text-center">
+            <h1 class="text-3xl md:text-5xl font-extrabold tracking-tight mb-3 drop-shadow-md">
+                Proteggi le tue Foto
+            </h1>
+            <p class="text-lg text-white/80 max-w-2xl mx-auto drop-shadow">
+                Aggiungi un watermark diagonale a ripetizione su più immagini contemporaneamente in modo che nessuno possa rubare la foto originale.
+            </p>
+        </div>
+
+        <!-- Controls Section -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-black/10 p-6 rounded-2xl border border-white/10">
+            <!-- Text Input -->
+            <div class="flex flex-col gap-2">
+                <label for="watermarkText" class="font-semibold text-white/90 drop-shadow">Testo del Watermark</label>
+                <input type="text" id="watermarkText" placeholder="es. Mario Rossi" 
+                       class="glass-input w-full px-4 py-3 rounded-xl focus:ring-0">
+                <p class="text-sm text-white/60">Il prefisso "© " verrà aggiunto automaticamente.</p>
+            </div>
+
+            <!-- File Input -->
+            <div class="flex flex-col gap-2">
+                <label for="imageUpload" class="font-semibold text-white/90 drop-shadow">Seleziona Immagini</label>
+                <input type="file" id="imageUpload" accept="image/*" multiple
+                       class="glass-input w-full px-4 py-3 rounded-xl file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-white/20 file:text-white hover:file:bg-white/30 cursor-pointer">
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="md:col-span-2 flex flex-col sm:flex-row gap-4 justify-center mt-4">
+                <button id="processBtn" class="glass-btn glass-btn-primary px-8 py-3 rounded-xl text-lg w-full sm:w-auto flex items-center justify-center">
+                    <span id="processBtnText">Applica Watermark</span>
+                </button>
+                <button id="downloadZipBtn" class="glass-btn glass-btn-success px-8 py-3 rounded-xl text-lg w-full sm:w-auto flex items-center justify-center hidden">
+                    Scarica Tutte (ZIP)
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages Area (Hidden by default) -->
+        <div id="messageArea" class="hidden text-center p-4 rounded-xl glass-panel text-sm font-medium"></div>
+
+        <!-- Preview Section -->
+        <div id="previewContainer" class="hidden flex-col gap-4">
+            <h2 class="text-2xl font-bold border-b border-white/20 pb-2 drop-shadow">Anteprima Immagini</h2>
+            <!-- Grid for thumbnails -->
+            <div id="gallery" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                <!-- Images will be injected here -->
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="fixed bottom-4 right-4 z-50">
+        <div class="glass-panel px-6 py-3 text-sm text-white/90 font-medium tracking-wide text-center shadow-xl">
+            &copy; 2026 Myco Zennaro - All rights reserved.
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // DOM Elements
+        const textInput = document.getElementById('watermarkText');
+        const fileInput = document.getElementById('imageUpload');
+        const processBtn = document.getElementById('processBtn');
+        const processBtnText = document.getElementById('processBtnText');
+        const downloadZipBtn = document.getElementById('downloadZipBtn');
+        const gallery = document.getElementById('gallery');
+        const previewContainer = document.getElementById('previewContainer');
+        const messageArea = document.getElementById('messageArea');
+
+        // State array to hold processed image data for the ZIP
+        let processedImages = [];
+
+        // Helper function to show messages
+        function showMessage(msg, isError = false) {
+            messageArea.textContent = msg;
+            messageArea.className = `text-center p-4 rounded-xl border ${isError ? 'bg-red-500/20 border-red-500/50 text-red-100' : 'bg-green-500/20 border-green-500/50 text-green-100'}`;
+            messageArea.classList.remove('hidden');
+            setTimeout(() => { messageArea.classList.add('hidden'); }, 5000);
+        }
+
+        // Process button click handler
+        processBtn.addEventListener('click', async () => {
+            const rawText = textInput.value.trim();
+            const files = fileInput.files;
+
+            // Validations
+            if (!rawText) {
+                showMessage("Inserisci il testo per il watermark.", true);
+                return;
+            }
+            if (files.length === 0) {
+                showMessage("Seleziona almeno un'immagine.", true);
+                return;
+            }
+
+            const watermarkText = "© " + rawText;
+
+            // UI State change during processing
+            processBtn.disabled = true;
+            processBtn.innerHTML = '<div class="spinner"></div> Elaborazione...';
+            downloadZipBtn.classList.add('hidden');
+            gallery.innerHTML = ''; // Clear previous gallery
+            processedImages = []; // Clear previous array
+            previewContainer.classList.remove('hidden');
+
+            // Process each file
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                try {
+                    const watermarkedDataUrl = await processImage(file, watermarkText);
+                    
+                    // Save to our array for the ZIP
+                    processedImages.push({
+                        name: `watermarked_${file.name}`,
+                        data: watermarkedDataUrl
+                    });
+
+                    // Add to UI gallery
+                    const imgElement = document.createElement('img');
+                    imgElement.src = watermarkedDataUrl;
+                    imgElement.className = "w-full h-auto object-cover rounded-xl border border-white/20 shadow-lg hover:scale-105 transition-transform duration-300";
+                    imgElement.alt = "Watermarked Image";
+                    
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = "glass-panel p-2 flex flex-col justify-center items-center overflow-hidden";
+                    imgContainer.appendChild(imgElement);
+                    
+                    gallery.appendChild(imgContainer);
+
+                } catch (err) {
+                    console.error("Errore durante l'elaborazione di", file.name, err);
+                    showMessage(`Errore nell'elaborazione di ${file.name}`, true);
+                }
+            }
+
+            // Restore UI State
+            processBtn.disabled = false;
+            processBtn.innerHTML = '<span id="processBtnText">Applica Watermark</span>';
+            
+            if (processedImages.length > 0) {
+                downloadZipBtn.classList.remove('hidden');
+                showMessage(`${processedImages.length} immagin${processedImages.length > 1 ? 'i' : 'e'} elaborat${processedImages.length > 1 ? 'e' : 'a'} con successo!`);
+            }
+        });
+
+        // Function to process a single image returning a Promise with DataURL
+        function processImage(file, text) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        // Create canvas
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+
+                        // Draw original image
+                        ctx.drawImage(img, 0, 0);
+
+                        // Set watermark styles
+                        // Ingrandito leggermente il font calcolando sul lato maggiore dell'immagine
+                        const fontSize = Math.max(30, Math.floor(Math.max(img.width, img.height) * 0.045)); 
+                        ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+                        
+                        // Semi-transparent white text - ridotto per una maggiore trasparenza
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+                        
+                        // Ombreggiatura e contorno molto più leggeri per non coprire l'immagine
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+                        ctx.shadowBlur = Math.max(2, fontSize / 15);
+                        ctx.lineWidth = Math.max(1, fontSize / 30);
+                        ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+
+                        // Calculate bounds for repeating diagonal
+                        // Move to center to rotate
+                        ctx.translate(canvas.width / 2, canvas.height / 2);
+                        // Rotate -45 degrees
+                        ctx.rotate(-45 * Math.PI / 180);
+
+                        // We need to draw far enough to cover the corners of the original rectangle
+                        const diagLength = Math.sqrt(canvas.width * canvas.width + canvas.height * canvas.height);
+                        
+                        // Measure text to determine steps
+                        const textMetrics = ctx.measureText(text);
+                        const textWidth = textMetrics.width;
+                        
+                        // Spacing between repeated text - Ridotto per aumentare la densità del watermark
+                        const stepX = textWidth + fontSize * 1.5; 
+                        const stepY = fontSize * 2.5;
+
+                        // Start drawing from -diagonal to +diagonal
+                        for (let y = -diagLength; y < diagLength; y += stepY) {
+                            // Offset every other row to create a brick-like pattern
+                            const offset = (Math.abs(y / stepY) % 2 === 0) ? 0 : stepX / 2;
+                            
+                            for (let x = -diagLength - offset; x < diagLength; x += stepX) {
+                                ctx.fillText(text, x, y);
+                                ctx.strokeText(text, x, y);
+                            }
+                        }
+
+                        // Reset transformations (optional since we discard context, but good practice)
+                        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+                        // Convert to data url (PNG to maintain quality and transparency if original had it)
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    
+                    img.onerror = () => reject(new Error("Image failed to load."));
+                    img.src = event.target.result;
+                };
+                
+                reader.onerror = () => reject(new Error("File failed to read."));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ZIP and Download Logic
+        downloadZipBtn.addEventListener('click', async () => {
+            if (processedImages.length === 0) return;
+
+            downloadZipBtn.disabled = true;
+            downloadZipBtn.innerHTML = '<div class="spinner"></div> Creazione ZIP...';
+
+            try {
+                const zip = new JSZip();
+                const imgFolder = zip.folder("immagini_watermark");
+
+                // Add all images to ZIP
+                processedImages.forEach(img => {
+                    // Extract Base64 part from data URL
+                    const base64Data = img.data.split(',')[1];
+                    imgFolder.file(img.name, base64Data, { base64: true });
+                });
+
+                // Generate ZIP file
+                const zipContent = await zip.generateAsync({ type: "blob" });
+                
+                // Trigger download
+                const downloadLink = document.createElement("a");
+                downloadLink.href = URL.createObjectURL(zipContent);
+                downloadLink.download = "Foto_Protette.zip";
+                
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                document.body.removeChild(downloadLink);
+
+            } catch (err) {
+                console.error("Errore nella creazione dello ZIP:", err);
+                showMessage("Errore nella creazione del file ZIP.", true);
+            } finally {
+                downloadZipBtn.disabled = false;
+                downloadZipBtn.innerHTML = 'Scarica Tutte (ZIP)';
+            }
+        });
+    </script>
+</body>
+</html>
